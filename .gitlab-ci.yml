@@ -3,12 +3,15 @@
 
 stages:
   - security
+  - sast
+  - dast
   - test  
   - build
   - deploy-dev
   - deploy-staging
   - deploy-prod
   - monitoring
+  - post-deploy-security
 
 variables:
   DOCKER_REGISTRY: docker.sxc.codes
@@ -18,20 +21,32 @@ variables:
   DOCKER_TLS_CERTDIR: "/certs"
   SECURE_FILES_DOWNLOAD_PATH: "./secrets"
 
-# Security scanning and vulnerability assessment
-security-scan:
-  stage: security
-  image: aquasec/trivy:latest
+# SAST Security Analysis
+sast:
+  stage: sast
+  image: shiftleft/scan:latest
   script:
-    - trivy fs --format template --template "@contrib/sarif.tpl" -o security-report.sarif .
-    - trivy fs --severity HIGH,CRITICAL --exit-code 1 .
+    - shiftleft analyze --app chasewhiterabbit
   artifacts:
     reports:
-      sast: security-report.sarif
+      sast: shiftleft-report.json
     expire_in: 1 week
   allow_failure: false
-  tags:
-    - docker
+
+# DAST Security Analysis
+dast:
+  stage: dast
+  image: owasp/zap2docker-stable
+  script:
+    - zap-cli start
+    - zap-cli status -t 60
+    - zap-cli active-scan http://dev.chasewhiterabbit.sxc.codes
+    - zap-cli report -o owasp-zap-report.html
+  artifacts:
+    paths:
+      - owasp-zap-report.html
+    expire_in: 1 week
+  allow_failure: false
 
 # Secret scanning
 secret-detection:
@@ -277,6 +292,38 @@ notify-deployment:
       echo "ChaseWhiteRabbit deployment to $CI_ENVIRONMENT_NAME completed successfully." | \
       mail -s "🐰 Deployment Success: ChaseWhiteRabbit $CI_COMMIT_SHA" \
         tiatheone@protonmail.com,garrett@sxc.codes,garrett.dillman@gmail.com
+  tags:
+    - docker
+  only:
+    - main
+    - tags
+  when: on_success
+
+# Post-deployment security scanning
+post-deploy-security-scan:
+  stage: post-deploy-security
+  image: curlimages/curl:latest
+  script:
+    - |
+      # Run OWASP ZAP against deployed environment
+      curl -X POST \
+        -H "Content-Type: application/json" \
+        -d '{"target": "https://chasewhiterabbit.sxc.codes", "mode": "active"}' \
+        "http://zap.sxc.codes/JSON/ascan/action/scan/" > zap_scan_id.json
+    - |
+      # Wait for scan completion and get results
+      SCAN_ID=$(cat zap_scan_id.json | jq -r '.scan')
+      while [ "$(curl -s "http://zap.sxc.codes/JSON/ascan/view/status/?scanId=$SCAN_ID" | jq -r '.status')" != "100" ]; do
+        sleep 10
+      done
+      curl "http://zap.sxc.codes/OTHER/core/other/htmlreport/" > post-deploy-security-report.html
+    - |
+      # Parse vulnerabilities and create GitLab issues
+      python3 scripts/ci-cd/security/vulnerability-manager.py --report post-deploy-security-report.html
+  artifacts:
+    paths:
+      - post-deploy-security-report.html
+    expire_in: 1 week
   tags:
     - docker
   only:

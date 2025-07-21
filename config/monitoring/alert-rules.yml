@@ -1,0 +1,139 @@
+# Prometheus Alert Rules for ChaseWhiteRabbit
+groups:
+  - name: infrastructure.rules
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected on {{ $labels.instance }}"
+          description: "CPU usage is above 80% on {{ $labels.instance }} for more than 5 minutes."
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected on {{ $labels.instance }}"
+          description: "Memory usage is above 85% on {{ $labels.instance }} for more than 5 minutes."
+
+      # Disk space usage
+      - alert: DiskSpaceUsage
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High disk usage detected on {{ $labels.instance }}"
+          description: "Disk usage is above 85% on {{ $labels.instance }}:{{ $labels.mountpoint }}."
+
+      # Service down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.instance }} is down"
+          description: "{{ $labels.instance }} has been down for more than 2 minutes."
+
+  - name: application.rules
+    rules:
+      # High response time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is above 1s for more than 10 minutes."
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% for more than 5 minutes."
+
+      # Application pods not ready
+      - alert: PodNotReady
+        expr: kube_pod_status_ready{condition="false", namespace="chasewhiterabbit"} == 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod {{ $labels.pod }} is not ready"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 15 minutes."
+
+      # Container restarting frequently
+      - alert: ContainerRestarting
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container restarting frequently"
+          description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is restarting frequently."
+
+  - name: database.rules
+    rules:
+      # High database connections
+      - alert: HighDatabaseConnections
+        expr: pg_stat_activity_count / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connection usage is above 80%."
+
+      # Database query time
+      - alert: SlowDatabaseQueries
+        expr: rate(pg_stat_activity_max_tx_duration[5m]) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Database queries are taking longer than 30 seconds."
+
+  - name: kubernetes.rules
+    rules:
+      # Node not ready
+      - alert: KubernetesNodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kubernetes node not ready"
+          description: "Node {{ $labels.node }} has been not ready for more than 10 minutes."
+
+      # High pod crash rate
+      - alert: KubernetesPodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kubernetes pod crash looping"
+          description: "Pod {{ $labels.pod }} is crash looping."
+
+      # Deployment replica mismatch
+      - alert: KubernetesDeploymentReplicasMismatch
+        expr: kube_deployment_spec_replicas != kube_deployment_status_available_replicas
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kubernetes deployment replicas mismatch"
+          description: "Deployment {{ $labels.deployment }} has {{ $labels.spec_replicas }} desired but {{ $labels.available_replicas }} available replicas."

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chasewhiterabbit
+  labels:
+    name: chasewhiterabbit
+    app.kubernetes.io/name: chasewhiterabbit
+    app.kubernetes.io/instance: production

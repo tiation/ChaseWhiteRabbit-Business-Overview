@@ -1,0 +1,150 @@
+# Prometheus Configuration for ChaseWhiteRabbit
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'chasewhiterabbit-production'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - grafana.sxc.codes:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "alert-rules.yml"
+  - "recording-rules.yml"
+
+# Scrape configuration
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Node Exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+          - 'helm.sxc.codes:9100'
+          - 'docker.sxc.codes:9100'
+          - 'docker.tiation.net:9100'
+          - 'gitlab.sxc.codes:9100'
+          - 'grafana.sxc.codes:9100'
+          - 'elastic.sxc.codes:9100'
+          - 'supabase.sxc.codes:9100'
+          - 'ubuntu.sxc.codes:9100'
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # ChaseWhiteRabbit application
+  - job_name: 'chasewhiterabbit-app'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - chasewhiterabbit
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+    scrape_interval: 15s
+
+  # Kubernetes cluster monitoring
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+      - role: endpoints
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+  # Kubernetes nodes
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+
+  # Kubernetes pods
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # DigitalOcean monitoring
+  - job_name: 'digitalocean-droplets'
+    static_configs:
+      - targets:
+          - 'helm.sxc.codes:9100'
+          - 'docker.sxc.codes:9100'
+          - 'gitlab.sxc.codes:9100'
+          - 'grafana.sxc.codes:9100'
+          - 'elastic.sxc.codes:9100'
+          - 'supabase.sxc.codes:9100'
+          - 'ubuntu.sxc.codes:9100'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '([^:]+):.*'
+        target_label: instance
+        replacement: '${1}'
+      - source_labels: [instance]
+        target_label: provider
+        replacement: 'digitalocean'
+
+  # Application-specific monitoring
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['helm.sxc.codes:9113']
+    scrape_interval: 30s
+
+  # Database monitoring
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['supabase.sxc.codes:9187']
+    scrape_interval: 30s

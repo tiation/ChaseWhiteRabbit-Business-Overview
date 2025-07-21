@@ -1,0 +1,44 @@
+# ChaseWhiteRabbit Development Dockerfile
+# Optimized for development workflow with hot reload and debugging
+
+FROM node:18-alpine
+
+LABEL maintainer="ChaseWhiteRabbit Team <tiatheone@protonmail.com>"
+LABEL version="1.0.0-dev"
+LABEL description="ChaseWhiteRabbit Development Environment"
+
+# Install development dependencies
+RUN apk add --no-cache \
+    git \
+    bash \
+    curl \
+    vim \
+    htop \
+    jq
+
+# Create development user
+RUN addgroup -g 1001 -S developer && \
+    adduser -S -D -h /home/developer -u 1001 -G developer developer
+
+# Set up working directory
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY --chown=developer:developer package*.json ./
+COPY --chown=developer:developer demo-repository/package*.json ./demo-repository/
+
+# Install all dependencies (including dev dependencies)
+USER developer
+RUN npm install
+
+# Copy source code
+COPY --chown=developer:developer . .
+
+# Create necessary directories
+RUN mkdir -p logs tmp uploads
+
+# Expose ports for development
+EXPOSE 3000 9229
+
+# Development command with hot reload
+CMD ["npm", "run", "dev"]

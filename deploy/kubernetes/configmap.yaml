@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chasewhiterabbit-config
+  namespace: chasewhiterabbit
+data:
+  app.yaml: |
+    server:
+      port: 80
+      host: "0.0.0.0"
+    
+    monitoring:
+      prometheus:
+        enabled: true
+        port: 9090
+        endpoint: "/metrics"
+      grafana:
+        url: "https://grafana.sxc.codes"
+    
+    logging:
+      level: "info"
+      format: "json"
+      elasticsearch:
+        host: "elastic.sxc.codes"
+        port: 9200
+        index: "chasewhiterabbit-logs"
+    
+    database:
+      supabase:
+        url: "https://supabase.sxc.codes"
+        anon_key: "${SUPABASE_ANON_KEY}"
+    
+    security:
+      cors:
+        enabled: true
+        origins: 
+          - "https://chasewhiterabbit.sxc.codes"
+          - "https://api.chasewhiterabbit.sxc.codes"
+      
+    alerts:
+      email:
+        recipients:
+          - "tiatheone@protonmail.com"
+          - "garrett@sxc.codes"
+          - "garrett.dillman@gmail.com"

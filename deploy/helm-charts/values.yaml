@@ -1,0 +1,118 @@
+# Default values for chasewhiterabbit.
+# This is a YAML-formatted file.
+
+replicaCount: 3
+
+image:
+  repository: docker.sxc.codes/chasewhiterabbit
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets:
+  - name: docker-registry-secret
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: http
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  hosts:
+    - host: chasewhiterabbit.sxc.codes
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: api.chasewhiterabbit.sxc.codes
+      paths:
+        - path: /api
+          pathType: Prefix
+  tls:
+    - secretName: chasewhiterabbit-tls
+      hosts:
+        - chasewhiterabbit.sxc.codes
+        - api.chasewhiterabbit.sxc.codes
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Application configuration
+config:
+  nodeEnv: production
+  port: 80
+  
+  monitoring:
+    prometheus:
+      enabled: true
+      port: 9090
+    grafana:
+      url: "https://grafana.sxc.codes"
+  
+  logging:
+    level: "info"
+    format: "json"
+    elasticsearch:
+      host: "elastic.sxc.codes"
+      port: 9200
+      index: "chasewhiterabbit-logs"
+  
+  database:
+    supabase:
+      url: "https://supabase.sxc.codes"
+  
+  alerts:
+    email:
+      recipients:
+        - "tiatheone@protonmail.com"
+        - "garrett@sxc.codes"
+        - "garrett.dillman@gmail.com"
+
+# Dependencies
+ingress-nginx:
+  enabled: true
+  controller:
+    service:
+      type: LoadBalancer
+
+cert-manager:
+  enabled: true
+  installCRDs: true

@@ -1,0 +1,453 @@
+/**
+ * ChaseWhiteRabbit - Enterprise D&D Dice Roller Styles
+ * Modern, accessible, and performant CSS for gaming community
+ */
+
+/* CSS Variables for theming and consistency */
+:root {
+  --primary-color: #6b46c1;
+  --secondary-color: #10b981;
+  --accent-color: #f59e0b;
+  --danger-color: #ef4444;
+  --success-color: #22c55e;
+  --warning-color: #f59e0b;
+  
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-light: #f9fafb;
+  
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f4f6;
+  --bg-dark: #1f2937;
+  
+  --border-color: #d1d5db;
+  --border-radius: 0.5rem;
+  --border-radius-lg: 1rem;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  
+  --transition: all 0.2s ease-in-out;
+  --animation-bounce: bounce 0.5s ease-in-out;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-light: #1f2937;
+    
+    --bg-primary: #1f2937;
+    --bg-secondary: #374151;
+    --bg-dark: #f3f4f6;
+    
+    --border-color: #4b5563;
+  }
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+body {
+  font-family: var(--font-family);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+
+p {
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
+}
+
+/* Layout components */
+header {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: var(--bg-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+main {
+  flex: 1;
+  padding: 2rem 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+footer p {
+  margin-bottom: 0.5rem;
+}
+
+/* Dice roller interface */
+.dice-container {
+  display: grid;
+  gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.dice-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--bg-primary);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.dice-btn {
+  aspect-ratio: 1;
+  border: 2px solid var(--border-color);
+  background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 700;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.dice-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.dice-btn:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.dice-btn:hover::before {
+  left: 100%;
+}
+
+.dice-btn:active {
+  transform: translateY(0);
+}
+
+.dice-btn.selected {
+  border-color: var(--primary-color);
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: var(--text-light);
+  box-shadow: var(--shadow-lg);
+}
+
+.roll-interface {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: var(--bg-primary);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.roll-interface input {
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: var(--transition);
+  min-width: 120px;
+}
+
+.roll-interface input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.1);
+}
+
+.roll-button {
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: var(--text-light);
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.roll-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.roll-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.roll-button:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.roll-button:active {
+  transform: scale(0.98);
+}
+
+.roll-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.result-container {
+  padding: 2rem;
+  background: var(--bg-primary);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.result-container.rolling {
+  animation: pulse 1s infinite;
+}
+
+.roll-result {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.roll-details {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.critical-hit {
+  color: var(--success-color) !important;
+  animation: var(--animation-bounce);
+}
+
+.critical-fail {
+  color: var(--danger-color) !important;
+  animation: shake 0.5s ease-in-out;
+}
+
+.history-container {
+  padding: 1.5rem;
+  background: var(--bg-primary);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.history-container h3 {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+#roll-history {
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-secondary);
+}
+
+#roll-history li {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#roll-history li:last-child {
+  border-bottom: none;
+}
+
+#roll-history li:nth-child(even) {
+  background: var(--bg-primary);
+}
+
+.history-timestamp {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+#clear-history {
+  padding: 0.5rem 1rem;
+  background: var(--danger-color);
+  color: var(--text-light);
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+#clear-history:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Animations */
+@keyframes bounce {
+  0%, 20%, 60%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  80% { transform: translateY(-5px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  h1 { font-size: 2rem; }
+  
+  .dice-selector {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  
+  .dice-btn {
+    font-size: 1rem;
+  }
+  
+  .roll-interface {
+    flex-direction: column;
+    padding: 1rem;
+  }
+  
+  .roll-interface input {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .roll-button {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  main {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dice-selector {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .roll-result {
+    font-size: 1.5rem;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus management for keyboard users */
+.dice-btn:focus,
+.roll-button:focus,
+input:focus,
+button:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: #000000;
+    --text-secondary: var(--text-primary);
+  }
+}

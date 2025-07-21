@@ -1,0 +1,131 @@
+# ELK Stack Configuration for ChaseWhiteRabbit
+
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: chasewhiterabbit
+  namespace: chasewhiterabbit
+spec:
+  version: 8.0.0
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+      node.store.allow_mmap: false
+  secureSettings:
+  - secretName: es-certs-secret
+
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+  namespace: chasewhiterabbit
+spec:
+  version: 8.0.0
+  count: 1
+  elasticsearchRef:
+    name: chasewhiterabbit
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          limits:
+            memory: 2Gi
+            cpu: 1
+          requests:
+            memory: 1Gi
+            cpu: 500m
+        volumeMounts:
+          - name: kibana-certs
+            mountPath: /mnt/elastic-internal/kibana-certs
+  podDisruptionBudget:
+    spec:
+      minAvailable: 1
+
+---
+apiVersion: logstash.k8s.elastic.co/v1
+kind: Logstash
+metadata:
+  name: logstash
+  namespace: chasewhiterabbit
+spec:
+  version: 8.0.0
+  count: 1
+  elasticsearchRef:
+    name: chasewhiterabbit
+  resources:
+    limits:
+      memory: 4Gi
+      cpu: 2
+    requests:
+      memory: 2Gi
+      cpu: 1
+  podTemplate:
+    spec:
+      containers:
+      - name: logstash
+        volumeMounts:
+          - name: logstash-certs
+            mountPath: /usr/share/logstash/config/certs
+          - name: log-config
+            mountPath: /usr/share/logstash/pipeline/logs.conf
+  podDisruptionBudget:
+    spec:
+      minAvailable: 1
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: es-certs-secret
+  namespace: chasewhiterabbit
+type: Opaque
+data:
+  ca.crt: "<encoded-cert>"
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: elastic-rule
+  namespace: chasewhiterabbit
+spec:
+  groups:
+  - name: elastic.rules
+    rules:
+    - alert: ElasticsearchClusterHealthRed
+      expr: elasticsearch_cluster_health_status{color='red'} == 1
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Elasticsearch cluster health is RED"
+        description: |-
+          Elasticsearch cluster health is RED for more than 2 minutes.
+          Resolve by checking the Elasticsearch logs and ensuring that all nodes are available.
+    - alert: LogstashNodeDown
+      expr: logstash_pipeline_plugin_event_count{status='error'} > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Logstash node {{ $labels.instance }} has errors"
+        description: "Logstash node has been throwing errors for more than 5 minutes."
+    - alert: KibanaErrors
+      expr: sum(rate(kibana_stats_kibana_pipeline_events_duration[pipeline_id="___kibana["^e_"]]"}){client_mod,"plugin"="output",stage}"}) > 5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate in Kibana"
+        description: "Kibana has a high rate of plugin errors for more than 2 minutes."
