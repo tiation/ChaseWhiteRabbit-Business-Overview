@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=garrett@sxc.codes"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - afl-fantasy-network
+
+  frontend:
+    image: docker.sxc.codes/afl-fantasy-frontend:develop
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`staging.afl-fantasy.sxc.codes`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    environment:
+      - NODE_ENV=staging
+      - REACT_APP_API_URL=https://staging.afl-fantasy.sxc.codes/api
+    networks:
+      - afl-fantasy-network
+    depends_on:
+      - backend
+
+  backend:
+    image: docker.sxc.codes/afl-fantasy-backend:develop
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`staging.afl-fantasy.sxc.codes`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=4000"
+    environment:
+      - NODE_ENV=staging
+      - DATABASE_URL=${STAGING_DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - AFL_API_KEY=${AFL_API_KEY}
+    networks:
+      - afl-fantasy-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  data-processor:
+    image: docker.sxc.codes/afl-fantasy-data-processor:develop
+    environment:
+      - DATABASE_URL=${STAGING_DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - AFL_API_KEY=${AFL_API_KEY}
+    networks:
+      - afl-fantasy-network
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - afl-fantasy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter
+    command:
+      - '-nginx.scrape-uri=http://frontend/nginx_status'
+    networks:
+      - afl-fantasy-network
+    depends_on:
+      - frontend
+
+  redis-exporter:
+    image: oliver006/redis_exporter
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    networks:
+      - afl-fantasy-network
+    depends_on:
+      - redis
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    networks:
+      - afl-fantasy-network
+    volumes:
+      - '/:/host:ro,rslave'
+
+volumes:
+  letsencrypt:
+  redis_data:
+
+networks:
+  afl-fantasy-network:
+    driver: bridge
