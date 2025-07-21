@@ -1,0 +1,198 @@
+# ChaseWhiteRabbit Prometheus Configuration
+# Enterprise-grade monitoring for digital transformation initiative
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'chasewhiterabbit'
+    environment: 'development'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 5s
+    metrics_path: /metrics
+
+  # ChaseWhiteRabbit Application
+  - job_name: 'chasewhiterabbit-app'
+    static_configs:
+      - targets: ['app:3000']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scrape_timeout: 5s
+
+  # Node Exporter (System Metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # Redis Monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 15s
+
+  # Elasticsearch Monitoring
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+    scrape_interval: 30s
+    metrics_path: /_prometheus/metrics
+
+  # Grafana Monitoring
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Kubernetes API Server (when deployed to K8s)
+  - job_name: 'kubernetes-apiserver'
+    kubernetes_sd_configs:
+      - role: endpoints
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+  # Kubernetes Nodes
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  # Kubernetes Pods
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # External Infrastructure Monitoring
+  - job_name: 'sxc-infrastructure'
+    static_configs:
+      - targets:
+          - 'helm.sxc.codes:9100'      # Helm chart hosting
+          - 'docker.sxc.codes:9100'    # Primary CI/CD runner
+          - 'gitlab.sxc.codes:9100'    # GitLab CI/CD
+          - 'grafana.sxc.codes:3000'   # Grafana dashboards
+          - 'elastic.sxc.codes:9200'   # Elasticsearch
+          - 'supabase.sxc.codes:8000'  # Supabase backend
+          - 'ubuntu.sxc.codes:9100'    # General purpose node
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    params:
+      module: [http_2xx]
+
+  # Black Box Monitoring (Uptime checks)
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://chasewhiterabbit.sxc.codes
+          - https://dev.chasewhiterabbit.sxc.codes
+          - https://staging.chasewhiterabbit.tiation.net
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Custom Gaming Community Metrics
+  - job_name: 'dnddiceroller-legacy'
+    static_configs:
+      - targets: ['dnddiceroller.com']
+    scrape_interval: 60s
+    metrics_path: /health
+    scheme: https
+    params:
+      format: [prometheus]
+
+# Recording Rules for Performance Optimization
+recording_rules:
+  - name: chasewhiterabbit.rules
+    rules:
+      # Application Performance
+      - record: chasewhiterabbit:http_requests:rate5m
+        expr: sum(rate(http_requests_total[5m])) by (instance, method, status)
+      
+      - record: chasewhiterabbit:http_request_duration:p99
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance))
+      
+      - record: chasewhiterabbit:http_request_duration:p95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance))
+      
+      - record: chasewhiterabbit:http_request_duration:p50
+        expr: histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance))
+
+      # Infrastructure Health
+      - record: chasewhiterabbit:node_load_average:normalized
+        expr: node_load1 / count(count(node_cpu_seconds_total) by (cpu)) by (instance)
+      
+      - record: chasewhiterabbit:node_memory_usage:percentage
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))
+      
+      - record: chasewhiterabbit:node_disk_usage:percentage
+        expr: 100 * (1 - (node_filesystem_free_bytes / node_filesystem_size_bytes))
+
+      # Business Metrics
+      - record: chasewhiterabbit:dice_rolls:rate5m
+        expr: sum(rate(dice_rolls_total[5m])) by (instance, dice_type)
+      
+      - record: chasewhiterabbit:active_users:5m
+        expr: sum(increase(user_sessions_total[5m])) by (instance)
+      
+      - record: chasewhiterabbit:response_time_sla:percentage
+        expr: 100 * (sum(rate(http_request_duration_seconds_bucket{le="0.1"}[5m])) by (instance) / sum(rate(http_request_duration_seconds_count[5m])) by (instance))

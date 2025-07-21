@@ -1,0 +1,303 @@
+# ChaseWhiteRabbit GitLab CI/CD Pipeline
+# Enterprise-grade DevOps pipeline for digital transformation initiative
+
+stages:
+  - security
+  - test  
+  - build
+  - deploy-dev
+  - deploy-staging
+  - deploy-prod
+  - monitoring
+
+variables:
+  DOCKER_REGISTRY: docker.sxc.codes
+  HELM_REGISTRY: helm.sxc.codes
+  GRAFANA_HOST: grafana.sxc.codes
+  ELASTIC_HOST: elastic.sxc.codes
+  DOCKER_TLS_CERTDIR: "/certs"
+  SECURE_FILES_DOWNLOAD_PATH: "./secrets"
+
+# Security scanning and vulnerability assessment
+security-scan:
+  stage: security
+  image: aquasec/trivy:latest
+  script:
+    - trivy fs --format template --template "@contrib/sarif.tpl" -o security-report.sarif .
+    - trivy fs --severity HIGH,CRITICAL --exit-code 1 .
+  artifacts:
+    reports:
+      sast: security-report.sarif
+    expire_in: 1 week
+  allow_failure: false
+  tags:
+    - docker
+
+# Secret scanning
+secret-detection:
+  stage: security
+  image: trufflesecurity/trufflehog:latest
+  script:
+    - trufflehog filesystem --directory=. --fail --json > secret-scan.json
+  artifacts:
+    reports:
+      secret_detection: secret-scan.json
+    expire_in: 1 week
+  allow_failure: false
+  tags:
+    - docker
+
+# Unit and integration tests
+test-unit:
+  stage: test
+  image: node:18-alpine
+  services:
+    - redis:7-alpine
+    - docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+  variables:
+    REDIS_URL: redis://redis:6379
+    ELASTICSEARCH_URL: http://docker.elastic.co__elasticsearch__elasticsearch:9200
+    NODE_ENV: test
+  script:
+    - npm ci
+    - npm run test:unit
+    - npm run test:integration
+    - npm run test:coverage
+  artifacts:
+    reports:
+      junit: test-results.xml
+      coverage: coverage/cobertura-coverage.xml
+    paths:
+      - coverage/
+    expire_in: 1 week
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  tags:
+    - docker
+
+# Performance testing
+test-performance:
+  stage: test
+  image: grafana/k6:latest
+  script:
+    - k6 run --out json=performance-results.json tests/performance/baseline.js
+    - k6 run --out json=load-test-results.json tests/performance/load-test.js
+  artifacts:
+    reports:
+      performance: performance-results.json
+    paths:
+      - load-test-results.json
+    expire_in: 1 week
+  tags:
+    - docker
+
+# Build Docker images with multi-stage optimization
+build-app:
+  stage: build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_BUILDKIT: 1
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $DOCKER_REGISTRY
+  script:
+    - |
+      docker build \
+        --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+        --build-arg VCS_REF=$CI_COMMIT_SHA \
+        --build-arg VERSION=$CI_COMMIT_TAG \
+        --cache-from $DOCKER_REGISTRY/chasewhiterabbit:latest \
+        --tag $DOCKER_REGISTRY/chasewhiterabbit:$CI_COMMIT_SHA \
+        --tag $DOCKER_REGISTRY/chasewhiterabbit:latest \
+        .
+    - docker push $DOCKER_REGISTRY/chasewhiterabbit:$CI_COMMIT_SHA
+    - docker push $DOCKER_REGISTRY/chasewhiterabbit:latest
+  tags:
+    - docker
+  only:
+    - main
+    - develop
+    - tags
+
+# Package Helm charts
+build-helm:
+  stage: build
+  image: alpine/helm:latest
+  script:
+    - helm package ./infrastructure/helm/chasewhiterabbit --version $CI_PIPELINE_ID
+    - curl --data-binary "@chasewhiterabbit-$CI_PIPELINE_ID.tgz" http://$HELM_REGISTRY/api/charts
+  artifacts:
+    paths:
+      - "*.tgz"
+    expire_in: 1 week
+  tags:
+    - docker
+  only:
+    - main
+    - develop
+
+# Deploy to development environment (docker.sxc.codes)
+deploy-development:
+  stage: deploy-dev
+  image: bitnami/kubectl:latest
+  environment:
+    name: development
+    url: https://dev.chasewhiterabbit.sxc.codes
+  script:
+    - kubectl config use-context development
+    - helm upgrade --install chasewhiterabbit-dev ./infrastructure/helm/chasewhiterabbit 
+      --namespace chasewhiterabbit-dev 
+      --create-namespace
+      --set image.tag=$CI_COMMIT_SHA
+      --set environment=development
+      --set ingress.hosts[0].host=dev.chasewhiterabbit.sxc.codes
+      --set monitoring.enabled=true
+      --set logging.elasticsearch.host=$ELASTIC_HOST
+  tags:
+    - kubernetes
+  only:
+    - develop
+  when: manual
+
+# Deploy to staging environment (docker.tiation.net)
+deploy-staging:
+  stage: deploy-staging
+  image: bitnami/kubectl:latest
+  environment:
+    name: staging
+    url: https://staging.chasewhiterabbit.tiation.net
+  script:
+    - kubectl config use-context staging
+    - helm upgrade --install chasewhiterabbit-staging ./infrastructure/helm/chasewhiterabbit
+      --namespace chasewhiterabbit-staging
+      --create-namespace
+      --set image.tag=$CI_COMMIT_SHA
+      --set environment=staging
+      --set ingress.hosts[0].host=staging.chasewhiterabbit.tiation.net
+      --set monitoring.enabled=true
+      --set logging.elasticsearch.host=$ELASTIC_HOST
+      --set resources.requests.cpu=100m
+      --set resources.requests.memory=128Mi
+      --set resources.limits.cpu=500m
+      --set resources.limits.memory=512Mi
+  tags:
+    - kubernetes
+  only:
+    - main
+  when: manual
+
+# Deploy to production
+deploy-production:
+  stage: deploy-prod
+  image: bitnami/kubectl:latest
+  environment:
+    name: production
+    url: https://chasewhiterabbit.sxc.codes
+  script:
+    - kubectl config use-context production
+    - |
+      helm upgrade --install chasewhiterabbit-prod ./infrastructure/helm/chasewhiterabbit \
+        --namespace chasewhiterabbit-prod \
+        --create-namespace \
+        --set image.tag=$CI_COMMIT_SHA \
+        --set environment=production \
+        --set ingress.hosts[0].host=chasewhiterabbit.sxc.codes \
+        --set monitoring.enabled=true \
+        --set logging.elasticsearch.host=$ELASTIC_HOST \
+        --set resources.requests.cpu=200m \
+        --set resources.requests.memory=256Mi \
+        --set resources.limits.cpu=1000m \
+        --set resources.limits.memory=1Gi \
+        --set autoscaling.enabled=true \
+        --set autoscaling.minReplicas=2 \
+        --set autoscaling.maxReplicas=10 \
+        --set autoscaling.targetCPUUtilizationPercentage=70
+  tags:
+    - kubernetes
+  only:
+    - tags
+  when: manual
+
+# Configure monitoring and alerting
+setup-monitoring:
+  stage: monitoring
+  image: curlimages/curl:latest
+  script:
+    - |
+      # Deploy Grafana dashboards
+      for dashboard in infrastructure/grafana/dashboards/*.json; do
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $GRAFANA_API_TOKEN" \
+          -d @"$dashboard" \
+          "http://$GRAFANA_HOST/api/dashboards/db"
+      done
+    - |
+      # Configure Prometheus alerts
+      curl -X POST \
+        -H "Content-Type: application/yaml" \
+        -d @infrastructure/prometheus/rules/alerts.yml \
+        "http://prometheus.sxc.codes/-/reload"
+    - |
+      # Set up log parsing rules in Elasticsearch
+      curl -X PUT \
+        -H "Content-Type: application/json" \
+        -d @infrastructure/elasticsearch/index-template.json \
+        "http://$ELASTIC_HOST/_index_template/chasewhiterabbit"
+  tags:
+    - docker
+  only:
+    - main
+    - tags
+  when: on_success
+
+# Notification and alerting setup
+notify-deployment:
+  stage: monitoring
+  image: curlimages/curl:latest
+  script:
+    - |
+      # Send deployment notification
+      curl -X POST \
+        -H "Content-Type: application/json" \
+        -d "{
+          \"text\": \"🐰 ChaseWhiteRabbit deployment completed successfully!\",
+          \"attachments\": [{
+            \"color\": \"good\",
+            \"fields\": [
+              {\"title\": \"Environment\", \"value\": \"$CI_ENVIRONMENT_NAME\", \"short\": true},
+              {\"title\": \"Version\", \"value\": \"$CI_COMMIT_SHA\", \"short\": true},
+              {\"title\": \"Pipeline\", \"value\": \"$CI_PIPELINE_URL\", \"short\": false}
+            ]
+          }]
+        }" \
+        "$SLACK_WEBHOOK_URL"
+    - |
+      # Send email notification
+      echo "ChaseWhiteRabbit deployment to $CI_ENVIRONMENT_NAME completed successfully." | \
+      mail -s "🐰 Deployment Success: ChaseWhiteRabbit $CI_COMMIT_SHA" \
+        tiatheone@protonmail.com,garrett@sxc.codes,garrett.dillman@gmail.com
+  tags:
+    - docker
+  only:
+    - main
+    - tags
+  when: on_success
+
+# Cleanup and optimization
+cleanup-registry:
+  stage: monitoring
+  image: docker:24-cli
+  script:
+    - |
+      # Clean up old images (keep last 10)
+      docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $DOCKER_REGISTRY
+      IMAGES=$(docker images $DOCKER_REGISTRY/chasewhiterabbit --format "{{.Tag}}" | grep -v latest | sort -r | tail -n +11)
+      for img in $IMAGES; do
+        docker rmi $DOCKER_REGISTRY/chasewhiterabbit:$img || true
+      done
+  tags:
+    - docker
+  only:
+    - schedules
+  when: manual

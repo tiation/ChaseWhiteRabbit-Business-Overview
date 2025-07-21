@@ -1,0 +1,186 @@
+version: '3.8'
+
+services:
+  # Main application development environment
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: chasewhiterabbit-app
+    ports:
+      - "3000:3000"
+      - "9229:9229" # Node.js debugging port
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DEBUG=chasewhiterabbit:*
+    networks:
+      - chasewhiterabbit-network
+    depends_on:
+      - prometheus
+      - grafana
+      - elasticsearch
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`localhost`)"
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: chasewhiterabbit-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./infrastructure/prometheus/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - chasewhiterabbit-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.localhost`)"
+
+  # Grafana for observability dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: chasewhiterabbit-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    networks:
+      - chasewhiterabbit-network
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
+
+  # Elasticsearch for log aggregation
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: chasewhiterabbit-elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - chasewhiterabbit-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.elasticsearch.rule=Host(`elasticsearch.localhost`)"
+
+  # Kibana for log visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: chasewhiterabbit-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - chasewhiterabbit-network
+    depends_on:
+      - elasticsearch
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kibana.rule=Host(`kibana.localhost`)"
+
+  # Logstash for log processing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: chasewhiterabbit-logstash
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./infrastructure/logstash/config:/usr/share/logstash/config
+      - ./infrastructure/logstash/pipeline:/usr/share/logstash/pipeline
+    networks:
+      - chasewhiterabbit-network
+    depends_on:
+      - elasticsearch
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: chasewhiterabbit-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - chasewhiterabbit-network
+    labels:
+      - "traefik.enable=false"
+
+  # Traefik reverse proxy for development
+  traefik:
+    image: traefik:v3.0
+    container_name: chasewhiterabbit-traefik
+    ports:
+      - "80:80"
+      - "8080:8080" # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infrastructure/traefik/traefik.yml:/etc/traefik/traefik.yml
+    networks:
+      - chasewhiterabbit-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: chasewhiterabbit-node-exporter
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - chasewhiterabbit-network
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  chasewhiterabbit-network:
+    driver: bridge
+    name: chasewhiterabbit-network

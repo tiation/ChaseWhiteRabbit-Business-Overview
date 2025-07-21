@@ -1,0 +1,267 @@
+# ChaseWhiteRabbit .gitignore
+# Enterprise-grade security and development patterns
+
+# =============================================================================
+# 🔒 Security & Credentials
+# =============================================================================
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.staging  
+.env.production
+.env.test
+config/.env*
+
+# API Keys and secrets
+secrets/
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+serviceAccountKey.json
+google-services.json
+
+# SSH keys
+id_rsa*
+id_ed25519*
+known_hosts
+authorized_keys
+
+# =============================================================================
+# 📦 Dependencies & Package Management
+# =============================================================================
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log*
+.yarn-integrity
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+venv/
+env/
+.venv/
+
+# Go
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# =============================================================================
+# 🏗️ Build & Development
+# =============================================================================
+
+# Build outputs
+dist/
+build/
+out/
+*.tgz
+*.tar.gz
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# =============================================================================
+# 🐳 Docker & Containerization
+# =============================================================================
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Container data
+data/
+volumes/
+
+# =============================================================================
+# ☸️ Kubernetes & Helm
+# =============================================================================
+
+# Helm
+charts/*.tgz
+.helm/
+helm-debug.log
+
+# Kubernetes
+*.kubeconfig
+kubeconfig*
+k8s-secrets/
+
+# =============================================================================
+# 📊 Monitoring & Observability
+# =============================================================================
+
+# Prometheus data
+prometheus-data/
+grafana-data/
+alertmanager-data/
+
+# Elasticsearch
+elasticsearch-data/
+kibana-data/
+logstash-data/
+
+# Metrics and logs
+metrics/
+*.metrics
+monitoring-temp/
+
+# =============================================================================
+# 🧪 Testing & Coverage
+# =============================================================================
+
+# Test results
+coverage/
+*.coverage
+.nyc_output/
+test-results/
+junit.xml
+test-report.html
+
+# Jest
+jest-results.json
+
+# Performance testing
+k6-results/
+load-test-results/
+
+# =============================================================================
+# 🗄️ Databases & Cache
+# =============================================================================
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+dump.sql
+
+# Redis
+redis-data/
+*.rdb
+
+# PostgreSQL
+postgres-data/
+
+# =============================================================================
+# 🌐 Web Assets & Cache
+# =============================================================================
+
+# Compiled assets
+public/assets/
+static/assets/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vercel/
+
+# =============================================================================
+# 📱 Platform Specific
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.fuse_hidden*
+
+# =============================================================================
+# 🚀 CI/CD & Deployment
+# =============================================================================
+
+# GitLab
+.gitlab-ci-local/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+*.tfvars
+*.tfplan
+
+# Ansible
+ansible.retry
+group_vars/vault.yml
+host_vars/*/vault.yml
+
+# =============================================================================
+# 📋 Documentation & Temporary Files
+# =============================================================================
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+
+# Archive files (unless intentional)
+*.zip
+*.rar
+*.7z
+
+# =============================================================================
+# 🎯 Project Specific
+# =============================================================================
+
+# ChaseWhiteRabbit specific
+dice-roll-cache/
+user-session-data/
+performance-benchmarks/
+legacy-migration-data/
+
+# Gaming community data
+player-statistics/
+campaign-data/
+dice-roll-history/
+
+# Infrastructure backups
+infrastructure-snapshots/
+deployment-logs/
+rollback-points/
