@@ -63,6 +63,12 @@ ChaseWhiteRabbit adheres to ISO/IEC 27001 standards for establishing, implementi
 - Regular scheduled audits
 - Reporting and corrective actions
 
+### Audit Logging and Management
+- Comprehensive audit trails for all system activities
+- Real-time logging of authentication and authorization events
+- Compliance with SOC2, ISO 27001, and GDPR standards
+- Continuous monitoring and automatic reporting via APIs
+
 ### Management Review
 - Regular review of ISMS effectiveness
 - Continuous improvement initiatives

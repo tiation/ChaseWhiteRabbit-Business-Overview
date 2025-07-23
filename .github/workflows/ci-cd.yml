@@ -31,11 +31,23 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
 
+      - name: Run Snyk security scanner
+        uses: snyk/actions/setup@v2
+      
+      - name: Test for vulnerabilities with Snyk
+        run: snyk test
+
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v2
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+      
+      - name: Document Security Policies
+        run: |
+          echo "## Security Policies" >> security-policies.md
+          echo "- Threat model and guidelines are documented in docs/security/threat-model.md" >> security-policies.md
+          echo "- Regular dependency scanning and updates are enforced" >> security-policies.md
 
   build-and-test:
     name: Build & Test (Static)

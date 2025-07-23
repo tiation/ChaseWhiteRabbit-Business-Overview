@@ -1,0 +1,373 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "ChaseWhiteRabbit - Error Rates & Reliability",
+    "description": "Comprehensive error tracking, reliability metrics, and failure analysis across all services",
+    "tags": ["errors", "reliability", "sla", "chasewhiterabbit", "alerts"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Error Rate by Service",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"4..|5..\"}[5m])) by (job, status) / sum(rate(http_requests_total[5m])) by (job) * 100",
+            "legendFormat": "{{job}} - {{status}}xx",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Error Rate (%)",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "thresholds": [
+          {"value": 5, "colorMode": "critical", "op": "gt"},
+          {"value": 1, "colorMode": "warning", "op": "gt"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Error Count by Status Code",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"4..|5..\"}[5m])) by (status)",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Errors per second",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Service Level Agreement (SLA) Compliance",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "100 - (sum(rate(http_requests_total{status=~\"5..\"}[24h])) / sum(rate(http_requests_total[24h])) * 100)",
+            "legendFormat": "24h SLA",
+            "refId": "A"
+          },
+          {
+            "expr": "100 - (sum(rate(http_requests_total{status=~\"5..\"}[7d])) / sum(rate(http_requests_total[7d])) * 100)",
+            "legendFormat": "7d SLA",
+            "refId": "B"
+          },
+          {
+            "expr": "100 - (sum(rate(http_requests_total{status=~\"5..\"}[30d])) / sum(rate(http_requests_total[30d])) * 100)",
+            "legendFormat": "30d SLA",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 99},
+                {"color": "green", "value": 99.9}
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Application Errors Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=\"500\"}[5m])) by (instance)",
+            "legendFormat": "500 Internal Server Error - {{instance}}",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{status=\"502\"}[5m])) by (instance)",
+            "legendFormat": "502 Bad Gateway - {{instance}}",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{status=\"503\"}[5m])) by (instance)",
+            "legendFormat": "503 Service Unavailable - {{instance}}",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{status=\"504\"}[5m])) by (instance)",
+            "legendFormat": "504 Gateway Timeout - {{instance}}",
+            "refId": "D"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Errors per second",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+      },
+      {
+        "id": 5,
+        "title": "Database Connection Errors",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "pg_stat_database_conflicts",
+            "legendFormat": "{{datname}} - Conflicts",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(pg_stat_database_deadlocks[5m])",
+            "legendFormat": "{{datname}} - Deadlocks/sec",
+            "refId": "B"
+          },
+          {
+            "expr": "pg_stat_database_temp_files",
+            "legendFormat": "{{datname}} - Temp Files",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Database Issues",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 6,
+        "title": "Container Health Status",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "up{job=\"kubernetes-pods\"} == 0",
+            "legendFormat": "{{pod}} - Down",
+            "refId": "A"
+          },
+          {
+            "expr": "kube_pod_status_phase{phase=\"Failed\"}",
+            "legendFormat": "{{pod}} - Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "kube_pod_container_status_restarts_total",
+            "legendFormat": "{{pod}}/{{container}} - Restarts",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Container Issues",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 7,
+        "title": "Network Errors & Timeouts",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_errs_total[5m])",
+            "legendFormat": "{{device}} - RX Errors",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(node_network_transmit_errs_total[5m])",
+            "legendFormat": "{{device}} - TX Errors",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(node_network_receive_drop_total[5m])",
+            "legendFormat": "{{device}} - RX Drops",
+            "refId": "C"
+          },
+          {
+            "expr": "rate(node_network_transmit_drop_total[5m])",
+            "legendFormat": "{{device}} - TX Drops",
+            "refId": "D"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Network Errors/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32}
+      },
+      {
+        "id": 8,
+        "title": "Disk I/O Errors",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(node_disk_io_time_seconds_total[5m])",
+            "legendFormat": "{{device}} - I/O Time",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(node_disk_reads_completed_total[5m])",
+            "legendFormat": "{{device}} - Read Ops",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(node_disk_writes_completed_total[5m])",
+            "legendFormat": "{{device}} - Write Ops",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Operations/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40}
+      },
+      {
+        "id": 9,
+        "title": "Recent Alert Summary",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "ALERTS{alertstate=\"firing\"}",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40}
+      },
+      {
+        "id": 10,
+        "title": "Mean Time Between Failures (MTBF)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "time() - max(changes(up[24h] == 0))",
+            "legendFormat": "MTBF (hours)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 24},
+                {"color": "green", "value": 168}
+              ]
+            },
+            "unit": "h"
+          }
+        },
+        "gridPos": {"h": 4, "w": 12, "x": 0, "y": 48}
+      },
+      {
+        "id": 11,
+        "title": "Mean Time To Recovery (MTTR)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "avg(delta(up[1h]))",
+            "legendFormat": "MTTR (minutes)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 15},
+                {"color": "red", "value": 60}
+              ]
+            },
+            "unit": "m"
+          }
+        },
+        "gridPos": {"h": 4, "w": 12, "x": 12, "y": 48}
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "service",
+          "type": "query",
+          "query": "label_values(http_requests_total, job)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "status_code",
+          "type": "query",
+          "query": "label_values(http_requests_total{status=~\"4..|5..\"}, status)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "time_range",
+          "type": "custom",
+          "options": [
+            {"text": "5m", "value": "5m"},
+            {"text": "15m", "value": "15m"},
+            {"text": "1h", "value": "1h"},
+            {"text": "24h", "value": "24h"}
+          ],
+          "current": {"text": "5m", "value": "5m"}
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Error Spikes",
+          "datasource": "Prometheus",
+          "expr": "increase(http_requests_total{status=~\"5..\"}[5m]) > 50",
+          "titleFormat": "Error Spike Alert",
+          "textFormat": "{{$value}} errors in 5 minutes"
+        },
+        {
+          "name": "Service Outages",
+          "datasource": "Prometheus",
+          "expr": "up == 0",
+          "titleFormat": "Service Down",
+          "textFormat": "{{instance}} is down"
+        }
+      ]
+    },
+    "refresh": "30s",
+    "time": {
+      "from": "now-4h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+    }
+  }
+}

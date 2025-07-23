@@ -25,6 +25,7 @@ const metricsService = require('../services/metrics');
 const healthService = require('../services/health');
 const errorHandler = require('../utils/errorHandler');
 const requestLogger = require('../utils/requestLogger');
+const auditLogger = require('../services/auditLogger');
 
 // Configuration
 const config = {
@@ -252,20 +253,42 @@ let server;
 function gracefulShutdown(signal) {
     logger.info(`Received ${signal}. Starting graceful shutdown...`);
     
+    // Log system shutdown event
+    auditLogger.logSystemEvent(
+        auditLogger.eventTypes.SYSTEM_SHUTDOWN, 
+        'initiated', 
+        { signal: signal, timestamp: new Date().toISOString() }
+    );
+    
     if (server) {
         server.close((err) => {
             if (err) {
                 logger.error('Error during server shutdown:', err);
+                auditLogger.logSystemEvent(
+                    auditLogger.eventTypes.SYSTEM_ERROR, 
+                    'failure', 
+                    { error: err.message, phase: 'shutdown' }
+                );
                 process.exit(1);
             }
             
             logger.info('Server closed successfully');
+            auditLogger.logSystemEvent(
+                auditLogger.eventTypes.SYSTEM_SHUTDOWN, 
+                'completed', 
+                { duration_ms: Date.now() - process.uptime() * 1000 }
+            );
             process.exit(0);
         });
         
         // Force close after 10 seconds
         setTimeout(() => {
             logger.error('Forced shutdown after timeout');
+            auditLogger.logSystemEvent(
+                auditLogger.eventTypes.SYSTEM_ERROR, 
+                'failure', 
+                { error: 'Forced shutdown timeout', timeout_ms: 10000 }
+            );
             process.exit(1);
         }, 10000);
     } else {
@@ -283,6 +306,19 @@ function startServer() {
             logger.info(`🎯 Health check available at: http://localhost:${config.port}/health`);
             logger.info(`📊 Metrics available at: http://localhost:${config.port}/metrics`);
             
+            // Log system startup event
+            auditLogger.logSystemEvent(
+                auditLogger.eventTypes.SYSTEM_STARTUP, 
+                'success', 
+                {
+                    port: config.port,
+                    environment: config.nodeEnv,
+                    version: process.env.APP_VERSION || '1.0.0',
+                    node_version: process.version,
+                    startup_time: Date.now() - process.uptime() * 1000
+                }
+            );
+            
             // Initialize metrics collection
             metricsService.init();
             
@@ -294,14 +330,29 @@ function startServer() {
         server.on('error', (error) => {
             if (error.code === 'EADDRINUSE') {
                 logger.error(`Port ${config.port} is already in use`);
+                auditLogger.logSystemEvent(
+                    auditLogger.eventTypes.SYSTEM_ERROR, 
+                    'failure', 
+                    { error: 'Port already in use', port: config.port, code: error.code }
+                );
             } else {
                 logger.error('Server error:', error);
+                auditLogger.logSystemEvent(
+                    auditLogger.eventTypes.SYSTEM_ERROR, 
+                    'failure', 
+                    { error: error.message, code: error.code, stack: error.stack }
+                );
             }
             process.exit(1);
         });
         
     } catch (error) {
         logger.error('Failed to start server:', error);
+        auditLogger.logSystemEvent(
+            auditLogger.eventTypes.SYSTEM_ERROR, 
+            'failure', 
+            { error: error.message, phase: 'startup', stack: error.stack }
+        );
         process.exit(1);
     }
 }

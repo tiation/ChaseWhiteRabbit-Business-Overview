@@ -95,6 +95,14 @@ The initiative emerged from the recognition that many beloved digital platforms,
 - **Community Growth**: Builds relationships with passionate user communities and potential business development opportunities
 - **Innovation Pipeline**: Creates testbed for exploring emerging technologies while maintaining production stability
 
+## Recommended Scaling Configuration
+
+### Autoscaling
+- **Minimum Replicas**: 3
+- **Maximum Replicas**: 20
+
+These values are determined based on initial load testing and should be monitored and adjusted as necessary based on real-world usage and performance metrics.
+
 ## Success Metrics
 
 ### Technical Excellence

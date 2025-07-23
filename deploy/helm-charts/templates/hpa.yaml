@@ -1,0 +1,93 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "chasewhiterabbit.fullname" . }}
+  labels:
+    {{- include "chasewhiterabbit.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "chasewhiterabbit.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.autoscaling.metrics.cpu.targetAverageValue }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: AverageValue
+        averageValue: {{ .Values.autoscaling.metrics.cpu.targetAverageValue }}
+  {{- end }}
+  {{- if .Values.autoscaling.metrics.memory.targetAverageValue }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: AverageValue
+        averageValue: {{ .Values.autoscaling.metrics.memory.targetAverageValue }}
+  {{- end }}
+  {{- if .Values.autoscaling.customMetrics.enabled }}
+  {{- if .Values.autoscaling.customMetrics.requestsPerSecond }}
+  - type: Pods
+    pods:
+      metric:
+        name: {{ .Values.autoscaling.customMetrics.requestsPerSecond.metricName }}
+      target:
+        type: AverageValue
+        averageValue: {{ .Values.autoscaling.customMetrics.requestsPerSecond.targetValue | quote }}
+  {{- end }}
+  {{- if .Values.autoscaling.customMetrics.responseTime }}
+  - type: Pods
+    pods:
+      metric:
+        name: {{ .Values.autoscaling.customMetrics.responseTime.metricName }}
+      target:
+        type: AverageValue
+        averageValue: {{ .Values.autoscaling.customMetrics.responseTime.targetValue | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.autoscaling.behavior }}
+  behavior:
+    {{- if .Values.autoscaling.behavior.scaleUp }}
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.behavior.scaleUp.stabilizationWindowSeconds }}
+      policies:
+      {{- range .Values.autoscaling.behavior.scaleUp.policies }}
+      - type: {{ .type }}
+        value: {{ .value }}
+        periodSeconds: {{ .periodSeconds }}
+      {{- end }}
+      selectPolicy: {{ .Values.autoscaling.behavior.scaleUp.selectPolicy }}
+    {{- end }}
+    {{- if .Values.autoscaling.behavior.scaleDown }}
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.behavior.scaleDown.stabilizationWindowSeconds }}
+      policies:
+      {{- range .Values.autoscaling.behavior.scaleDown.policies }}
+      - type: {{ .type }}
+        value: {{ .value }}
+        periodSeconds: {{ .periodSeconds }}
+      {{- end }}
+      selectPolicy: {{ .Values.autoscaling.behavior.scaleDown.selectPolicy }}
+    {{- end }}
+  {{- end }}
+{{- end }}

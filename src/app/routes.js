@@ -1,6 +1,7 @@
 /**
  * ChaseWhiteRabbit API Routes
  * Enterprise-grade REST API endpoints for dice rolling functionality
+ * Enhanced with comprehensive audit logging and compliance endpoints
  */
 
 'use strict';
@@ -9,6 +10,7 @@ const express = require('express');
 const { body, param, validationResult } = require('express-validator');
 const diceService = require('../services/dice');
 const metricsService = require('../services/metrics');
+const auditRoutes = require('../routes/audit');
 
 const router = express.Router();
 
@@ -35,7 +37,10 @@ router.get('/', (req, res) => {
             'POST /api/dice/roll': 'Roll dice with specified parameters',
             'GET /api/dice/history': 'Get roll history (last 100 rolls)',
             'DELETE /api/dice/history': 'Clear roll history',
-            'GET /api/stats': 'Get rolling statistics'
+            'GET /api/stats': 'Get rolling statistics',
+            'GET /api/audit/events': 'Get audit events (requires audit permissions)',
+            'GET /api/audit/compliance/soc2': 'Generate SOC2 compliance report',
+            'GET /api/audit/compliance/iso27001': 'Generate ISO 27001 compliance report'
         },
         documentation: 'https://chasewhiterabbit.sxc.codes/docs'
     });
@@ -204,5 +209,8 @@ router.post('/dice/batch', [
         });
     }
 });
+
+// Mount audit routes
+router.use('/audit', auditRoutes);
 
 module.exports = router;

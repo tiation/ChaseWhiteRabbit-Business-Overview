@@ -65,9 +65,53 @@ resources:
 autoscaling:
   enabled: true
   minReplicas: 3
-  maxReplicas: 10
+  maxReplicas: 20
   targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 75
+  # Advanced HPA metrics configuration
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Min
+  # Custom metrics for requests per second
+  customMetrics:
+    enabled: true
+    requestsPerSecond:
+      targetValue: 100
+      metricName: "nginx_ingress_controller_requests_rate"
+    responseTime:
+      targetValue: 100
+      metricName: "http_request_duration_ms_p95"
+  # Resource-based scaling thresholds
+  metrics:
+    cpu:
+      targetAverageUtilization: 70
+      targetAverageValue: "350m"
+    memory:
+      targetAverageUtilization: 75
+      targetAverageValue: "384Mi"
+    # Network-based scaling for high-traffic scenarios
+    network:
+      enabled: true
+      targetPacketsPerSecond: 1000
+      targetBytesPerSecond: "10Mi"
 
 nodeSelector: {}
 

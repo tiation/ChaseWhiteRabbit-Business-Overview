@@ -1,0 +1,334 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "ChaseWhiteRabbit - Autoscaler Events & Resource Management",
+    "description": "Monitoring of Kubernetes HPA events, scaling activities, and resource allocation across services",
+    "tags": ["autoscaler", "kubernetes", "hpa", "scaling", "chasewhiterabbit"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Horizontal Pod Autoscaler (HPA) Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "kube_horizontalpodautoscaler_status_current_replicas",
+            "format": "table",
+            "refId": "A"
+          },
+          {
+            "expr": "kube_horizontalpodautoscaler_status_desired_replicas",
+            "format": "table",
+            "refId": "B"
+          },
+          {
+            "expr": "kube_horizontalpodautoscaler_spec_max_replicas",
+            "format": "table",
+            "refId": "C"
+          },
+          {
+            "expr": "kube_horizontalpodautoscaler_spec_min_replicas",
+            "format": "table",
+            "refId": "D"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Pod Scaling Events Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"chasewhiterabbit\"}",
+            "legendFormat": "{{horizontalpodautoscaler}} - Current Replicas",
+            "refId": "A"
+          },
+          {
+            "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"chasewhiterabbit\"}",
+            "legendFormat": "{{horizontalpodautoscaler}} - Desired Replicas",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Replica Count",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 3,
+        "title": "CPU Utilization vs Target",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kube_horizontalpodautoscaler_status_target_metric{metric_name=\"cpu\"} / 100",
+            "legendFormat": "{{horizontalpodautoscaler}} - CPU Target",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{namespace=\"chasewhiterabbit\"}[5m]) * 100",
+            "legendFormat": "{{pod}} - Actual CPU %",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "CPU Utilization (%)",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Memory Utilization vs Target",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kube_horizontalpodautoscaler_status_target_metric{metric_name=\"memory\"} / 100",
+            "legendFormat": "{{horizontalpodautoscaler}} - Memory Target",
+            "refId": "A"
+          },
+          {
+            "expr": "container_memory_usage_bytes{namespace=\"chasewhiterabbit\"} / container_spec_memory_limit_bytes{namespace=\"chasewhiterabbit\"} * 100",
+            "legendFormat": "{{pod}} - Actual Memory %",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory Utilization (%)",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+      },
+      {
+        "id": 5,
+        "title": "Scaling Events Timeline",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "changes(kube_horizontalpodautoscaler_status_current_replicas[5m])",
+            "legendFormat": "{{horizontalpodautoscaler}} - Scale Events",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Scale Events Count",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 6,
+        "title": "Resource Requests vs Limits",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", namespace=\"chasewhiterabbit\"}) by (pod)",
+            "legendFormat": "{{pod}} - CPU Requests",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(kube_pod_container_resource_limits{resource=\"cpu\", namespace=\"chasewhiterabbit\"}) by (pod)",
+            "legendFormat": "{{pod}} - CPU Limits",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", namespace=\"chasewhiterabbit\"}) by (pod)",
+            "legendFormat": "{{pod}} - Memory Requests",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(kube_pod_container_resource_limits{resource=\"memory\", namespace=\"chasewhiterabbit\"}) by (pod)",
+            "legendFormat": "{{pod}} - Memory Limits",
+            "refId": "D"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Resource Units",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 7,
+        "title": "Node Resource Pressure",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kube_node_status_condition{condition=\"MemoryPressure\", status=\"true\"}",
+            "legendFormat": "{{node}} - Memory Pressure",
+            "refId": "A"
+          },
+          {
+            "expr": "kube_node_status_condition{condition=\"DiskPressure\", status=\"true\"}",
+            "legendFormat": "{{node}} - Disk Pressure",
+            "refId": "B"
+          },
+          {
+            "expr": "kube_node_status_condition{condition=\"PIDPressure\", status=\"true\"}",
+            "legendFormat": "{{node}} - PID Pressure",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Pressure Status",
+            "min": 0,
+            "max": 1
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32}
+      },
+      {
+        "id": 8,
+        "title": "Cluster Resource Allocation",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"}) / sum(kube_node_status_allocatable{resource=\"cpu\"}) * 100",
+            "legendFormat": "CPU Allocation %",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\"}) / sum(kube_node_status_allocatable{resource=\"memory\"}) * 100",
+            "legendFormat": "Memory Allocation %",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(kube_pod_info{namespace=\"chasewhiterabbit\"})",
+            "legendFormat": "Active Pods",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 70},
+                {"color": "red", "value": 90}
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Active Pods"},
+              "properties": [
+                {"id": "unit", "value": "short"}
+              ]
+            }
+          ]
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40}
+      },
+      {
+        "id": 9,
+        "title": "Pod Startup and Termination Times",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(kubelet_pod_start_duration_seconds_bucket{namespace=\"chasewhiterabbit\"}[5m])) by (le))",
+            "legendFormat": "95th percentile - Pod Start Time",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(kubelet_pod_start_duration_seconds_bucket{namespace=\"chasewhiterabbit\"}[5m])) by (le))",
+            "legendFormat": "50th percentile - Pod Start Time",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Duration (seconds)",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 48}
+      },
+      {
+        "id": 10,
+        "title": "HPA Decision Timeline",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "kube_horizontalpodautoscaler_status_condition{condition=\"ScalingActive\"}",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 48}
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "namespace",
+          "type": "query",
+          "query": "label_values(kube_horizontalpodautoscaler_info, namespace)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": {"text": "chasewhiterabbit", "value": "chasewhiterabbit"}
+        },
+        {
+          "name": "hpa",
+          "type": "query",
+          "query": "label_values(kube_horizontalpodautoscaler_info{namespace=\"$namespace\"}, horizontalpodautoscaler)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "deployment",
+          "type": "query",
+          "query": "label_values(kube_deployment_info{namespace=\"$namespace\"}, deployment)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Scaling Events",
+          "datasource": "Prometheus",
+          "expr": "changes(kube_horizontalpodautoscaler_status_current_replicas[1m]) != 0",
+          "titleFormat": "Scaling Event",
+          "textFormat": "{{horizontalpodautoscaler}} scaled to {{$value}} replicas"
+        },
+        {
+          "name": "Resource Pressure",
+          "datasource": "Prometheus",
+          "expr": "kube_node_status_condition{condition=~\".*Pressure\", status=\"true\"}",
+          "titleFormat": "Resource Pressure",
+          "textFormat": "{{node}} experiencing {{condition}}"
+        }
+      ]
+    },
+    "refresh": "30s",
+    "time": {
+      "from": "now-2h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+    }
+  }
+}

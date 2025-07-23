@@ -4,6 +4,10 @@
 
 The ChaseWhiteRabbit project takes security seriously. This document outlines our security policies, practices, and procedures for reporting vulnerabilities.
 
+## Threat Modeling
+- Detailed threat model available in `docs/security/threat-model.md`
+- Continuous review and quarterly updates
+
 ## Supported Versions
 
 We actively maintain and provide security updates for the following versions:

@@ -1,0 +1,139 @@
+{
+  "dashboards": {
+    "chasewhiterabbit_monitoring": {
+      "title": "ChaseWhiteRabbit - Production Monitoring",
+      "file": "../../../tools/monitoring/grafana-dashboards.json",
+      "description": "Main overview dashboard providing high-level system health metrics",
+      "tags": ["production", "overview", "infrastructure"],
+      "refresh": "30s",
+      "uid": "cwr-production-overview"
+    },
+    "container_metrics": {
+      "title": "ChaseWhiteRabbit - Container Metrics & Health",
+      "file": "./container-metrics.json",
+      "description": "Detailed container monitoring for memory, CPU usage, and health status across all services",
+      "tags": ["containers", "docker", "kubernetes", "health"],
+      "refresh": "30s",
+      "uid": "cwr-container-metrics"
+    },
+    "application_performance": {
+      "title": "ChaseWhiteRabbit - Application Performance & Latency",
+      "file": "./application-performance.json",
+      "description": "Detailed monitoring of response times, request latencies, and performance metrics across services",
+      "tags": ["performance", "latency", "response-time", "application"],
+      "refresh": "10s",
+      "uid": "cwr-application-performance"
+    },
+    "error_rates_reliability": {
+      "title": "ChaseWhiteRabbit - Error Rates & Reliability",
+      "file": "./error-rates-reliability.json",
+      "description": "Comprehensive error tracking, reliability metrics, and failure analysis across all services",
+      "tags": ["errors", "reliability", "sla", "alerts"],
+      "refresh": "30s",
+      "uid": "cwr-error-rates-reliability"
+    },
+    "autoscaler_events": {
+      "title": "ChaseWhiteRabbit - Autoscaler Events & Resource Management",
+      "file": "./autoscaler-events.json",
+      "description": "Monitoring of Kubernetes HPA events, scaling activities, and resource allocation across services",
+      "tags": ["autoscaler", "kubernetes", "hpa", "scaling"],
+      "refresh": "30s",
+      "uid": "cwr-autoscaler-events"
+    }
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2024-01-01",
+    "updated": "2024-01-01",
+    "prometheus_version": "2.45+",
+    "grafana_version": "10.0+",
+    "kubernetes_required": true,
+    "enterprise_features": [
+      "alerting",
+      "templating",
+      "annotations",
+      "variables"
+    ]
+  },
+  "import_instructions": {
+    "grafana_ui": [
+      "1. Login to Grafana at grafana.sxc.codes",
+      "2. Navigate to Dashboards > Import",
+      "3. Upload the JSON file or paste the JSON content",
+      "4. Configure data source (Prometheus)",
+      "5. Save dashboard"
+    ],
+    "grafana_api": [
+      "curl -X POST https://grafana.sxc.codes/api/dashboards/db \\",
+      "  -H 'Content-Type: application/json' \\",
+      "  -H 'Authorization: Bearer YOUR_API_KEY' \\",
+      "  -d @dashboard-file.json"
+    ],
+    "provisioning": [
+      "1. Copy JSON files to /etc/grafana/provisioning/dashboards/",
+      "2. Create dashboard provider configuration",
+      "3. Restart Grafana service"
+    ]
+  },
+  "data_sources": {
+    "required": [
+      {
+        "name": "Prometheus",
+        "type": "prometheus",
+        "url": "http://prometheus:9090",
+        "access": "proxy",
+        "isDefault": true
+      }
+    ],
+    "optional": [
+      {
+        "name": "Elasticsearch",
+        "type": "elasticsearch",
+        "url": "http://elastic.sxc.codes:9200",
+        "access": "proxy"
+      }
+    ]
+  },
+  "alert_configuration": {
+    "notification_channels": [
+      "email:tiatheone@protonmail.com",
+      "email:garrett@sxc.codes", 
+      "email:garrett.dillman@gmail.com"
+    ],
+    "alert_rules": [
+      "High CPU Usage (>80%)",
+      "High Memory Usage (>85%)",
+      "High Error Rate (>5%)",
+      "Service Down",
+      "Container Restart",
+      "Slow Database Queries"
+    ]
+  },
+  "performance_thresholds": {
+    "cpu_usage": {
+      "warning": 80,
+      "critical": 90,
+      "unit": "percent"
+    },
+    "memory_usage": {
+      "warning": 75,
+      "critical": 90,
+      "unit": "percent"
+    },
+    "response_time": {
+      "warning": 0.5,
+      "critical": 1.0,
+      "unit": "seconds"
+    },
+    "error_rate": {
+      "warning": 1,
+      "critical": 5,
+      "unit": "percent"
+    },
+    "queue_size": {
+      "warning": 500,
+      "critical": 1000,
+      "unit": "count"
+    }
+  }
+}
