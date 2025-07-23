@@ -1,0 +1,68 @@
+{
+  "environments": {
+    "staging": {
+      "baseUrl": "https://staging.chasewhiterabbit.sxc.codes",
+      "description": "Staging environment for load testing"
+    },
+    "production": {
+      "baseUrl": "https://chasewhiterabbit.sxc.codes",
+      "description": "Production environment (use with extreme caution)"
+    },
+    "local": {
+      "baseUrl": "http://localhost:3000",
+      "description": "Local development environment"
+    }
+  },
+  "testSuites": {
+    "smoke": {
+      "script": "smoke-test.js",
+      "description": "Quick validation of basic functionality",
+      "duration": "1-2 minutes",
+      "load": "Minimal (1 VU)"
+    },
+    "load": {
+      "script": "high-traffic-test.js",
+      "description": "Realistic high traffic simulation",
+      "duration": "25-30 minutes",
+      "load": "Up to 200 concurrent users with spike to 500"
+    },
+    "stress": {
+      "script": "stress-test.js",
+      "description": "Push system beyond normal capacity",
+      "duration": "30-35 minutes",
+      "load": "Up to 500 concurrent users"
+    }
+  },
+  "monitoring": {
+    "grafana": {
+      "url": "https://grafana.sxc.codes",
+      "dashboards": [
+        "Application Performance",
+        "Container Metrics",
+        "Error Rates & Reliability"
+      ]
+    },
+    "prometheus": {
+      "url": "https://prometheus.sxc.codes",
+      "metrics": [
+        "http_request_duration_seconds",
+        "http_requests_total",
+        "container_cpu_usage_seconds_total",
+        "container_memory_usage_bytes"
+      ]
+    }
+  },
+  "alerts": {
+    "email": [
+      "tiatheone@protonmail.com",
+      "garrett@sxc.codes",
+      "garrett.dillman@gmail.com"
+    ],
+    "thresholds": {
+      "response_time_95th": "2000ms",
+      "error_rate": "5%",
+      "cpu_usage": "80%",
+      "memory_usage": "85%"
+    }
+  }
+}
